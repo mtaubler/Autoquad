@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<launch>
+    <include file="$(find rosbridge_server)/launch/rosbridge_websocket.launch" />
+    <!-- IPv4 address of your drone -->
+    <arg name="ip" default="192.168.1.1" />
+    <!-- Ultrasound frequency (7 or 8). -->
+    <arg name="freq" default="8" />
+    <node name="ardrone_driver" pkg="ardrone_autonomy" type="ardrone_driver"
+          output="screen" clear_params="true" args="-ip $(arg ip)">
+        <param name="navdata_demo" value="False" />
+        <param name="realtime_navdata" value="True" />
+        <param name="realtime_video" value="True" />
+        <param name="looprate" value="30" />
+    </node>
+
+    <node name="drone_stateestimation" pkg="tum_ardrone" type="drone_stateestimation">
+    </node>
+    
+    <node name="drone_autopilot" pkg="tum_ardrone" type="drone_autopilot">
+    </node>
+
+    <node name="drone_gui" pkg="tum_ardrone" type="drone_gui">
+    </node>
+
+    <node pkg="ardrone_video" type="driver.py" name="mission_driver"/>
+
+    <node pkg="ardrone_video" type="noisy_coord_handler.py" name="noisy_coord_handler"/>
+
+</launch>
+

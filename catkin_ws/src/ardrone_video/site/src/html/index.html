@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+
+  <title>Quadcopter Controller</title>
+
+  <link rel="stylesheet" href="css/style.css" type="text/css" />	
+
+  <link rel="stylesheet" href="css/bootstrap.css" type="text/css"/>
+  <link rel="stylesheet" href="css/font-awesome.css" />
+  <link rel="stylesheet" href="css/demo.css" type="text/css" />
+
+  <script type="text/javascript" src="js/adapter.js"></script>
+  <script type="text/javascript" src="js/jquery.js"></script>
+  <script type="text/javascript" src="js/bootstrap.js"></script>
+  <script type="text/javascript" src="js/screenfull.js"></script>
+  <script type="text/javascript" src="js/underscore.js"></script>
+  <script type="text/javascript" src="js/backbone.js"></script>
+  <script type="text/javascript" src="js/uuid.js"></script>
+  <script type="text/javascript" src="js/meaty.js"></script>
+  <script type="text/javascript" src="js/eventemitter2.js"></script>
+  <script type="text/javascript" src="js/screenfull.js"></script>
+  <script type="text/javascript" src="js/roslib.js"></script>
+  <script type="text/javascript" src="js/ros_webrtc.js"></script>
+  <script type="text/javascript" src="js/kurento-client.js"></script>
+  <script type="text/javascript" src="js/kurento-utils.js"></script>
+
+  <script type="text/javascript" src="js/index.js"></script>
+
+  <script type="text/javascript" src="http://localhost:35729/livereload.js"></script>
+</head>
+
+<body>
+  <div class="border">
+    <h1>Parrot 2.0 Drone Controller</h1>
+    <div id="logo-image"></div>	
+  </div>
+
+  <form>
+    <div class="manualControl">
+      <!-- <img id="imageTag" src="http://localhost:8080/stream?topic=/ardrone/front/image_raw"></img> -->
+      <video autoplay id="imageTag"></video>
+      <canvas id="imageView" ></canvas>
+      <textarea type="text" id="inputDisplay"></textarea> 
+      <div id="battery"></div>
+      <div id="alt"></div>
+      <div id="vel"></div>
+      <div id="time"></div>
+      <div id="path"></div>
+      <div id="ptam"></div>
+    </div>
+
+    <div class="returnToMainPage">
+      <button type="button" class="mainPageButton" id="takeoffBtn">Takeoff</button>
+      <button style="margin-left: 2%" type="button" class="mainPageButton" id="landBtn">Land</button>
+      <button style="margin-left: 2%" type="button" class="mainPageButton" id="recBtn">Record</button>
+      <button style="margin-left: 2%" type="button" class="mainPageButton" id="swapBtn">Canvas</button>
+      <button style="margin-left: 2%" type="button" class="mainPageButton" id="toggleBtn">Mode: TUM</button>
+      <button style="margin-left: 2%" type="button" class="mainPageButton" id="exeBtn">Execute</button>
+      <button style="margin-left: 2%" type="button" class="mainPageButton" id="resetBtn">Reset</button>
+      <button style="margin-left: 2%" type="button" class="mainPageButton" id="clrBtn">Clear Canvas</button>
+    </div>
+
+    <br style="clear: both;" />
+  </form>
+</body>
+</html>

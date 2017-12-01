@@ -1,0 +1,477 @@
+<!doctype html>
+
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  
+  <script type="text/javascript" src="scripts/eventemitter2.js"></script>
+  <script type="text/javascript" src="scripts/roslib.js"></script>
+  <script type="text/javascript" type="scripts/javascript">
+
+
+
+//creates array of objects with x and y coordinates
+var dirVector = [];
+var mission = [];
+
+//defaults for header
+var pt="noisy\n";
+var showCanvas=true;
+
+var computeDistance = function(point1,point2){
+    var delta_x = point1.x-point2.x;
+    var delta_y = point1.y-point2.y;
+     
+    return delta_x*delta_x+delta_y*delta_y;
+}
+
+var breaksToVectors = function(){    
+    var smallestDistance= 20;
+    var distance=0;
+    var lastPoint=dirVector[0];
+    var zero = {x:0,y:0};
+
+    // find curvature of each point in radius of 5
+    var curvatures = [];
+    for (var i=5; i<dirVector.length-6;i++)
+    {
+      var backDistance = computeDistance(dirVector[i],dirVector[i-5]);
+      var frontDistance = computeDistance(dirVector[i],dirVector[i+5]);
+
+      var backVector = {x:(dirVector[i-5].x-dirVector[i].x)/backDistance, y:(dirVector[i-5].y-dirVector[i].y)/backDistance};
+      var frontVector = {x:(dirVector[i+5].x-dirVector[i].x)/frontDistance, y:(dirVector[i+5].y-dirVector[i].y)/frontDistance};
+      var distance = computeDistance(dirVector[i+5],dirVector[i-5]);
+
+      var cosineTheta = (backVector.x*frontVector.x+backVector.y*frontVector.y) / (backDistance*frontDistance);
+      var theta = Math.acos(cosineTheta);
+      var curvature = theta / distance;
+
+      curvatures.push(curvature);
+    }
+
+    // find critical points
+    var criticalPoints = [];
+    for (var i = 5; i < curvatures.length-6; i++)
+    {
+      var sum = 0;
+      for (var j = -5; j < 5; j++)
+      {
+        if (j != 0)
+        {
+          sum += curvatures[i+j];
+        }
+      }
+      var average = sum / 10;
+      if (curvatures[i] > 1.5*average)
+      {
+        criticalPoints.push(i-5);
+      }
+    }
+
+    // create vector segments
+    var startVector = dirVector[0];
+    for (var i = 0; i < criticalPoints.length; i++)
+    {
+      var curVector = {x:(dirVector[criticalPoints[i]].x-startVector.x), y:(dirVector[criticalPoints[i]].y-startVector.y)};
+      while((computeDistance(zero,curVector) < smallestDistance*smallestDistance) && (i < criticalPoints.length-1))
+      {
+        i++;
+        curVector = {x:(dirVector[criticalPoints[i]].x-startVector.x), y:(dirVector[criticalPoints[i]].y-startVector.y)};
+      }
+      if ((computeDistance(zero,curVector) < smallestDistance*smallestDistance) && (i == criticalPoints.length-1))
+      {
+        break;
+      }
+      startVector = dirVector[criticalPoints[i]];
+      curVector.x = curVector.x / 75;
+      curVector.y = curVector.y / 75;
+      console.log("Vector: (" + curVector.x + ", " + curVector.y + ")\n");
+      mission.push(curVector);
+    }
+    var endVector = {x:(dirVector[dirVector.length-1].x-startVector.x), y:(dirVector[dirVector.length-1].y-startVector.y)};
+    endVector.x = endVector.x / 75;
+    endVector.y = endVector.y / 75;
+    console.log("Vector: (" + endVector.x + ", " + endVector.y + ")\n");
+    mission.push(endVector);
+
+    return mission;
+}
+
+var clearCanvas = function(canvas,context) {   
+      //does the erasing of the canvas
+      context.clearRect(0, 0, canvas.width, canvas.height);
+      
+      //clears textarea string
+      document.getElementById('inputDisplay').value="";
+
+      //clears mission array
+      mission=[];
+  }  
+  
+var load = function () {
+
+        //what selects the draw canvas and allows me to set percent hieght and width for it
+        var canvas = document.getElementById('imageView');
+        canvas.width = canvas.scrollWidth;
+        canvas.height = canvas.scrollHeight;
+        var context = canvas.getContext('2d');
+
+        //how thick line is when made by mouse
+        var radius = 5;
+
+        //hope users arent holding down mouse as they enter
+        var dragging = false; 
+        
+        //this is what connects two points: gives width to drawn line 
+        context.lineWidth = radius * 2;
+
+        
+        
+
+        //used for finding the displacement vector
+        var x1, x2, y1, y2;
+        var flag = false;
+
+        //makes the center of the canvas (0,0)
+        var cx = canvas.width*.5;
+        var cy = canvas.height*(.5);
+
+        //to do: scale pixels to meters --> idk how to do that yet
+        //mousemoving event
+        var putPoint = function(e){
+            if(dragging){
+                
+                //Draws line from old point to new point = new point = new mouse position
+                context.lineTo(e.offsetX, e.offsetY);
+                context.stroke();
+                
+                //Draws circular points - cur mouse pos, radius size, circumference of point in radians
+                context.beginPath();
+                context.arc(e.offsetX, e.offsetY, radius, 0, Math.PI * 2);
+                context.fill();
+
+                //Creates path after dot = old point = current mouse position
+                context.beginPath();
+                context.moveTo(e.offsetX, e.offsetY);
+      
+                var point = {x:(e.offsetX - cx), y:(cy - e.offsetY)};
+                dirVector.push(point);
+                
+            }
+        }
+        
+        
+
+        
+        //mousedown event: starts a new path for drawing
+        var engage = function(e){
+            dragging = true;
+            putPoint(e);
+        }
+
+        //mouseup event: resets flags and ends current line path
+        var disengage = function(){
+            dragging = false;
+            flag = false;
+
+            //starts from new line every mouseup 
+            context.beginPath();
+        }
+
+        //mouseleave event: clears the canvas of any drawn lines
+        var erase = function(){
+            clearCanvas(canvas,context);
+        }
+
+        function toggleStuff(){
+            //Do Something...maybe another function showAlert(), for instance
+            
+            if (this.innerHTML=="Noisy"){
+                this.innerHTML = "Tum";
+                pt ="tum\n";
+            }
+            else{
+               //do something else
+                this.innerHTML =  "Noisy"
+                pt ="noisy\n";
+            }
+         }
+         
+        var flag=true;
+        function record()
+        {
+            var background = document.getElementById('recBtn').style.backgroundColor;
+            var textColor = document.getElementById('recBtn').style.color;
+            if (flag) 
+            {
+                flag=false;
+                document.getElementById('recBtn').style.background = "red";
+                document.getElementById('recBtn').style.color = "#black";
+            } 
+            else 
+            {
+                flag=true;
+                document.getElementById('recBtn').style.background = "black";
+                document.getElementById('recBtn').style.color = "#FFC904";
+            }   
+        }
+
+        
+
+        var takePic = function(){
+            console.log("oh snap");
+        }
+
+
+        
+        function swap()
+        {
+          console.log("press");
+            var swapBtnText = document.getElementById('swapBtn');
+            var canvDisplay = document.getElementById('imageView');
+            var inputDisplay = document.getElementById('inputDisplay');
+            
+            if (showCanvas) 
+            {
+                showCanvas=false;
+                swapBtnText.innerHTML="Manual";
+                
+                canvDisplay.style.display='none';
+                inputDisplay.style.display='block';
+            } 
+            else 
+            {
+                showCanvas=true;
+                swapBtnText.innerHTML="Canvas";  
+
+                canvDisplay.style.display='block';
+                inputDisplay.style.display='none';
+            }      
+        }
+
+        canvas.addEventListener('mousedown',engage);
+        canvas.addEventListener('mousemove',putPoint);
+        canvas.addEventListener('mouseup',disengage);
+        //canvas.addEventListener('mouseleave',erase);
+        
+        document.getElementById("swapBtn").addEventListener("click", swap);
+        document.getElementById('picBtn').addEventListener('click', takePic);
+        document.getElementById('recBtn').addEventListener('click', record);
+        document.getElementById('toggleBtn').addEventListener('click', toggleStuff);
+        document.getElementById('exeBtn').addEventListener('click', publishCommands);
+        document.getElementById('landBtn').addEventListener('click',land);
+        document.getElementById('takeoffBtn').addEventListener('click',takeoff);
+        document.getElementById("clrBtn").addEventListener("click", erase);
+	
+
+    }
+    window.addEventListener('load', load)
+ 
+
+
+  
+  var transfer;
+    // Connecting to ROS - logs successes and errors for websocket
+    // -----------------
+  
+    var ros = new ROSLIB.Ros({
+      url : 'ws://localhost:9090'
+    });
+  
+    ros.on('connection', function() {
+      console.log('Connected to websocket server.');
+    });
+  
+    ros.on('error', function(error) {
+      console.log('Error connecting to websocket server: ', error);
+    });
+  
+    ros.on('close', function() {
+      console.log('Connection to websocket server closed.');
+    });
+  
+  // Mission topic creation
+  var pathMission = new ROSLIB.Topic({
+     ros : ros,
+     name : 'ardrone_video/mission',
+     messageType: 'std_msgs/String'
+  });
+ 
+  // Add the strings of the array together for the drone
+  function publishCommands(){
+    var string = pt;
+
+
+    if(showCanvas)
+    {
+  		var array = breaksToVectors();
+      for(var i = 0; i < array.length; i++)
+      {
+        string += array[i].x + " " + array[i].y + "\n"; 
+      }
+    }
+    else
+    {
+        //console.log(document.getElementById('inputDisplay').value);
+        string = string + document.getElementById('inputDisplay').value;
+    }
+
+		var miss = new ROSLIB.Message({
+    		data : string
+  	}); 
+	  pathMission.publish(miss); 
+  };
+
+  function land(){
+
+    var landDrone = new ROSLIB.Topic({
+      ros : ros,
+      name : 'ardrone/land',
+      messageType : 'std_msgs/Empty'
+    });
+    landDrone.publish();
+  };
+
+  function takeoff(){
+    var takeoffDrone = new ROSLIB.Topic({
+      ros : ros,
+      name : 'ardrone/takeoff',
+      messageType : 'std_msgs/Empty'
+    });
+    takeoffDrone.publish(); 
+  };
+  
+  
+  var keyFlag = false; 
+ // on key down for manual control 
+onkeypress = function(e){
+  var key = e.keyCode ? e.keyCode : e.which;
+  if(key == 37)
+  {
+    var keyMiss = new ROSLIB.Message({
+      data : "manual" + "\n" + "west"
+    });
+    pathMission.publish(keyMiss);
+  }
+  else if(key == 38){
+    var keyMiss = new ROSLIB.Message({
+      data : "manual" + "\n" + "north"
+    });
+    pathMission.publish(keyMiss);
+  }
+  else if(key == 39){
+    var keyMiss = new ROSLIB.Message({
+      data : "manual" + "\n" + "east"
+    });
+    pathMission.publish(keyMiss);
+  }
+  else if(key == 40){
+    var keyMiss = new ROSLIB.Message({
+      data : "manual" + "\n" + "south"
+    });
+    pathMission.publish(keyMiss);
+  }
+};
+
+
+// 
+onkeyup = function(e){
+  var key = e.keyCode ? e.keyCode : e.which;
+  if(key == 37){
+  var keyMiss = new ROSLIB.Message({
+      data : "manual" + "\n" + "stop"
+    });
+    pathMission.publish(keyMiss);
+  }
+  else if(key == 38){
+    var keyMiss = new ROSLIB.Message({
+      data : "manual" + "\n" + "stop"
+    });
+    pathMission.publish(keyMiss);
+  }
+  else if(key == 39){
+    var keyMiss = new ROSLIB.Message({
+      data : "manual" + "\n" + "stop"
+    });
+    pathMission.publish(keyMiss);
+  }
+  else if(key == 40){
+    var keyMiss = new ROSLIB.Message({
+      data : "manual" + "\n" + "stop"
+    });
+    pathMission.publish(keyMiss);
+  }
+}
+        
+  
+  // Subscribing to a Topic
+  // ----------------------
+  
+    // Subscriber to retrieve drone's navdata
+    var nav = new ROSLIB.Topic({
+      ros : ros,
+      name : 'ardrone/navdata',
+      messageType: 'ardrone_autonomy/Navdata'
+    }); 
+  
+  
+    // Subscribe to the navdata and log or assign data here
+    nav.subscribe(function(message) {
+    //console.log('Battery percentage is : ' + message.batteryPercent + '% \n' + 'Estimated Altitude is : ' + message.altd + 'mm \n' + 'Linear velocities are : x: ' + message.vx + ' y: ' + message.vy + ' z :' + message.vz + '\n' + 'Time since drone started : ' + message.tm/1000000);
+    document.getElementById('battery').innerHTML = "Battery percentage: " + message.batteryPercent + "%"; 
+    document.getElementById('alt').innerHTML = "Estimated Altitude: " + message.altd/100 + "m"; 
+    document.getElementById('vel').innerHTML = "Linear Velocities: x: " + message.vx/100 + "m/s  y: " + message.vy/100 + "m/s  z : " + message.vz/100  + "m/s";
+    document.getElementById('time').innerHTML = "Time since started: " + message.tm/1000000 + "s"; 
+    });
+
+  
+  </script>
+
+<title>Quadcopter Controller</title>
+		<link rel="stylesheet" href="css/style.css" type="text/css" />	
+		<link rel="stylesheet" href="css/bootstrap.min.css" integrity="sha384-y3tfxAZXuh4HwSYylfB+J125MxIs6mR5FOHamPBG064zB+AFeWH94NdvaCBm8qnd" crossorigin="anonymous">
+		
+		<style>
+			
+		
+		</style>
+    </head>
+
+	<body>
+		<div class="border">
+			<h1>Parrot 2.0 Drone Controller</h1>
+			<div id="logo-image"></div>	
+    </div>
+    
+		<form>
+        <div class="manualControl">
+				        <img id="imageTag" src="http://localhost:8080/stream?topic=/ardrone/front/image_raw"></img>
+				        <canvas id="imageView" ></canvas>
+                <textarea type="text" id="inputDisplay"></textarea> 
+                <div id="battery"></div>
+                <div id="alt"></div>
+                <div id="vel"></div>
+                <div id="time"></div>
+          </div>
+			
+			<div class="returnToMainPage">
+        
+        <button type="button" class="mainPageButton" id="takeoffBtn">Takeoff</button>
+        <button style="margin-left: 2%" type="button" class="mainPageButton" id="landBtn">Land</button>
+        <button style="margin-left: 2%" type="button" class="mainPageButton" id="recBtn">Record</button>
+        <button style="margin-left: 2%" type="button" class="mainPageButton" id="picBtn">Picture</button>
+        <button style="margin-left: 2%" type="button" class="mainPageButton" id="swapBtn">Canvas</button>
+        <button style="margin-left: 2%" type="button" class="mainPageButton" id="toggleBtn">Noisy</button>
+        <button style="margin-left: 2%" type="button" class="mainPageButton" id="exeBtn">Execute</button>
+        <button style="margin-left: 2%" type="button" class="mainPageButton" id="clrBtn">Clear Canvas</button>
+        
+        
+
+			</div>
+
+			<br style="clear: both;" />
+		</form>
+		
+		
+	</body>
+</html>
